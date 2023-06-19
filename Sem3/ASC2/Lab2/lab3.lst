@@ -1,0 +1,180 @@
+     1                                  bits 32 ; assembling for the 32 bits architecture
+     2                                  
+     3                                  ; declare the EntryPoint (a label defining the very first instruction of the program)
+     4                                  global start        
+     5                                  
+     6                                  ; declare external functions needed by our program
+     7                                  extern exit               ; tell nasm that exit exists even if we won't be defining it
+     8                                  import exit msvcrt.dll    ; exit is a function that ends the calling process. It is defined in msvcrt.dll
+     9                                                            ; msvcrt.dll contains exit, printf and all the other important C-runtime specific functions
+    10                                  
+    11                                  ; our data is declared here (the variables needed by our program)
+    12                                  segment data use32 class=data
+    13                                      ; ...
+    14                                      ; (a+b)-(a+d)+(c-a)
+    15 00000000 02                          a1 db 2;
+    16 00000001 0100                        b1 dw 1;
+    17 00000003 0400000000000000            c1 dq 4
+    18 0000000B 01000000                    d1 dd 1;
+    19                                      ;c-(d+a)+(b+c)
+    20 0000000F 01                          a2 db 1;
+    21 00000010 0300                        b2 dw 3;
+    22 00000012 0A000000                    c2 dd 10;
+    23 00000016 0200000000000000            d2 dq 2;
+    24                                      ;x+a/b+c*d-b/c+e; a,b,d-byte; c-word; e-doubleword; x-qword = 10+4/2 + 1*6 - 2/1 + 10 = 20+2+6-2 = 26
+    25 0000001E 0A00000000000000            x3 dq 10;
+    26 00000026 04                          a3 db 4;
+    27 00000027 02                          b3 db 2;
+    28 00000028 06                          d3 db 6;
+    29 00000029 0100                        c3 dw 1;
+    30 0000002B 0A000000                    e3 dd 10;
+    31                                      
+    32                                  ; our code starts here
+    33                                  segment code use32 class=code
+    34                                      start:
+    35                                          ; ...
+    36                                          ; (a+b)-(a+d)+(c-a) = 2+1 - (2+1) + 4-2 = 2
+    37                                          ;we convert a to doubleword
+    38 00000000 A0[00000000]                    mov al, [a1];
+    39 00000005 B400                            mov ah, 0;
+    40 00000007 66BA0000                        mov dx, 0;
+    41 0000000B 668B1D[0B000000]                mov bx, word [d1];
+    42 00000012 668B0D[0D000000]                mov cx, word [d1+2];
+    43 00000019 6601D8                          add ax, bx;
+    44 0000001C 6611CA                          adc dx, cx; dx:ax = a+d
+    45 0000001F 6689C3                          mov bx, ax;
+    46 00000022 6689D1                          mov cx, dx;
+    47                                          ;we convert a to word unsigned
+    48 00000025 A0[00000000]                    mov al, [a1];
+    49 0000002A B400                            mov ah, 0;
+    50 0000002C 660305[01000000]                add ax, [b1]; ax = a + b
+    51                                          ;then convert to a doubleword for sub
+    52 00000033 66BA0000                        mov dx, 0;
+    53 00000037 6629D8                          sub ax, bx;
+    54 0000003A 6619CA                          sbb dx, cx; a+b-(a+d)
+    55                                          ;we convert a to quadword
+    56 0000003D 6689C3                          mov bx, ax;
+    57 00000040 6689D1                          mov cx, dx;
+    58 00000043 B800000000                      mov eax, 0;
+    59 00000048 A0[00000000]                    mov al, [a1];
+    60 0000004D BA00000000                      mov edx, 0;
+    61 00000052 6651                            push cx;
+    62 00000054 6653                            push bx;
+    63 00000056 8B1D[03000000]                  mov ebx, dword [c1];
+    64 0000005C 8B0D[07000000]                  mov ecx, dword [c1+4];
+    65 00000062 29C3                            sub ebx, eax;
+    66 00000064 19D1                            sbb ecx, edx; ecx:ebx = c-a
+    67                                          ; now add the final ones
+    68 00000066 58                              pop eax;
+    69 00000067 BA00000000                      mov edx, 0;
+    70 0000006C 01D8                            add eax, ebx;
+    71 0000006E 11CA                            adc edx, ecx;
+    72                                          
+    73                                          
+    74                                          ;c-(d+a)+(b+c) = 10 - (2+1) + (10+3) = 7+13 = 20
+    75                                          ;convert b to dword
+    76 00000070 66A1[10000000]                  mov ax, [b2];
+    77 00000076 66BA0000                        mov dx, 0;
+    78 0000007A 660305[12000000]                add ax, word [c2];
+    79 00000081 661315[14000000]                adc dx, word [c2+2]; dx:ax = b+c
+    80                                          ;convert a to qw
+    81 00000088 BB00000000                      mov ebx, 0;
+    82 0000008D 8A1D[0F000000]                  mov bl, [a2];
+    83 00000093 B900000000                      mov ecx, 0; ecx:ebx = a
+    84 00000098 031D[16000000]                  add ebx, dword [d2];
+    85 0000009E 130D[1A000000]                  adc ecx, dword [d2+4]; ecx:ebx = a+d
+    86                                          ;now to subtract a+d from c
+    87 000000A4 6652                            push dx;
+    88 000000A6 6650                            push ax;
+    89 000000A8 A1[12000000]                    mov eax, [c2];
+    90 000000AD BA00000000                      mov edx, 0;
+    91 000000B2 29D8                            sub eax, ebx;
+    92 000000B4 19CA                            sbb edx, ecx;
+    93                                          ; convert b+c to quadword
+    94 000000B6 5B                              pop ebx;
+    95 000000B7 B900000000                      mov ecx, 0;
+    96 000000BC 01D8                            add eax, ebx;
+    97 000000BE 11CA                            adc edx, ecx;
+    98                                          
+    99                                          
+   100                                          ;x+a/b+c*d-b/c+e = 26 UNSIGNED
+   101 000000C0 A0[26000000]                    mov al, [a3];
+   102 000000C5 B400                            mov ah, 0;
+   103 000000C7 F635[27000000]                  div byte [b3]; al = a/b
+   104 000000CD 88C3                            mov bl, al;
+   105                                          ; now lets do c*d
+   106 000000CF A0[28000000]                    mov al, [d3];
+   107 000000D4 B400                            mov ah, 0;
+   108 000000D6 66F725[29000000]                mul word [c3]; dx:ax = c*d;
+   109                                          ; now lets add these 2
+   110                                          ;convert al = a/b to a doubleword
+   111 000000DD B700                            mov bh, 0;
+   112 000000DF 66B90000                        mov cx, 0; cx:bx = a/b
+   113 000000E3 6601C3                          add bx, ax;
+   114 000000E6 6611D1                          adc cx, dx; cx:bx = a/b+c*d = 8
+   115                                          ; now lets do b/c
+   116 000000E9 A0[27000000]                    mov al, [b3];
+   117 000000EE B400                            mov ah, 0;
+   118 000000F0 66BA0000                        mov dx, 0; dx:ax = b
+   119 000000F4 66F735[29000000]                div word [c3]; ax = b/c = 2
+   120                                          ; now we subtract this from our previous result
+   121 000000FB 66BA0000                        mov dx, 0;
+   122 000000FF 6629C3                          sub bx, ax;
+   123 00000102 6619D1                          sbb cx, dx; cx:bx = a/b+c*d-b/c = 6
+   124                                          ; now we add the doubleword e = 10
+   125 00000105 66031D[2B000000]                add bx, word [e3];
+   126 0000010C 66130D[2D000000]                adc cx, word [e3+2]; cx:bx = 16;
+   127                                          ; now we add the quadword x = 10;
+   128 00000113 6651                            push cx;
+   129 00000115 6653                            push bx;
+   130 00000117 58                              pop eax;
+   131 00000118 BA00000000                      mov edx, 0; edx:eax = 16
+   132 0000011D 0305[1E000000]                  add eax, dword [x3];
+   133 00000123 1315[22000000]                  adc edx, dword [x3+4]; edx:eax = final result 26
+   134                                          
+   135                                          ;THIS IS A BUFFER SO I KNOW WHERE TO STOP IN THE DEBUGGER
+   136 00000129 B000                            mov al,0;
+   137 0000012B B000                            mov al,0;
+   138 0000012D B000                            mov al,0;
+   139 0000012F B000                            mov al,0;
+   140 00000131 B000                            mov al,0;
+   141 00000133 B000                            mov al,0;
+   142                                          
+   143                                          ; x+a/b+c*d-b/c+e = 26 SIGNED
+   144 00000135 A0[26000000]                    mov al, [a3]; convert a to word to divide by byte b
+   145 0000013A 6698                            cbw;
+   146 0000013C F63D[27000000]                  idiv byte [b3]; al = a/b = 4/2 = 2
+   147 00000142 88C3                            mov bl, al;
+   148                                          ;convert d to word to multiply with the word c
+   149 00000144 A0[28000000]                    mov al, [d3];
+   150 00000149 6698                            cbw;
+   151 0000014B 66F72D[29000000]                imul word [c3];dx:ax = c*d = 6*1 = 6
+   152                                          ; add these 2 together
+   153 00000152 6652                            push dx;
+   154 00000154 6650                            push ax;
+   155 00000156 88D8                            mov al, bl;
+   156 00000158 6698                            cbw;
+   157 0000015A 98                              cwde; eax = a/b
+   158 0000015B 5B                              pop ebx; ebx = c*d
+   159 0000015C 01C3                            add ebx, eax; ebx = 8
+   160                                          ;now calculate b/c
+   161                                          ; convert b to doubleword to divide it by word c 
+   162 0000015E A0[27000000]                    mov al, [b3];
+   163 00000163 6698                            cbw;
+   164 00000165 6699                            cwd; dx:ax = b
+   165 00000167 66F73D[29000000]                idiv word [c3]; ax = b/c = 2
+   166                                          ;substract it from our previous result
+   167                                          ;convert it to a doubleword for that
+   168 0000016E 98                              cwde; eax = b/c = 2
+   169 0000016F 29C3                            sub ebx, eax; ebx = 8-2 = 6
+   170                                          ; now add to this the dword e = 10
+   171 00000171 031D[2B000000]                  add ebx, dword [e3]; ebx = 10+6 = 16
+   172                                          ;now add to this the qword x = 10
+   173 00000177 89D8                            mov eax, ebx;
+   174 00000179 99                              cdq; edx:eax = 16;
+   175 0000017A 0305[1E000000]                  add eax, dword [x3];
+   176 00000180 1315[22000000]                  adc edx, dword [x3+4]; edx:eax = 26 which is the final result
+   177                                          
+   178                                          ; exit(0)
+   179 00000186 6A00                            push    dword 0      ; push the parameter for exit onto the stack
+   180 00000188 FF15[00000000]                  call    [exit]       ; call exit to terminate the program

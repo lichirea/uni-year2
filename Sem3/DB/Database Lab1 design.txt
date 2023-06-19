@@ -1,0 +1,3 @@
+A Fantasy Mercenary Band called "Band of the Dragon"
+
+The Band of the Dragon has many members. The Band is divided into legions. A legion represents a collection of member that are assigned to one type of job. For example, the "Dragon Slayers" are assigned to fighting dragons. A legion can have many members, so its a one to many relationship. A member can only be assigned to one legion. Another special body that makes up the Band is a special legion called the "Governing Feathers". The governing feathers are to organize and plan all business of the Band. A Legion can be ruled by one or more members of the Governing Feather, and a Governing Feather member can ruled over one or more legions; a many-to-many relationship.

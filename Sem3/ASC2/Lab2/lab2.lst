@@ -1,0 +1,92 @@
+     1                                  bits 32 ; assembling for the 32 bits architecture
+     2                                  
+     3                                  ; declare the EntryPoint (a label defining the very first instruction of the program)
+     4                                  global start        
+     5                                  
+     6                                  ; declare external functions needed by our program
+     7                                  extern exit               ; tell nasm that exit exists even if we won't be defining it
+     8                                  import exit msvcrt.dll    ; exit is a function that ends the calling process. It is defined in msvcrt.dll
+     9                                                            ; msvcrt.dll contains exit, printf and all the other important C-runtime specific functions
+    10                                  
+    11                                  ; our data is declared here (the variables needed by our program)
+    12                                  segment data use32 class=data
+    13                                      ; ...
+    14                                      
+    15                                  ; 2+8
+    16 00000000 02                          a1 db 2;
+    17 00000001 08                          b1 db 8;
+    18                                      
+    19                                  ;a+b-c+d-(a-d)
+    20 00000002 01                          a2 db 1;
+    21 00000003 02                          b2 db 2;
+    22 00000004 03                          c2 db 3;
+    23 00000005 04                          d2 db 4;
+    24                                      
+    25                                  ;(a+a-c)-(b+b+d)
+    26 00000006 0100                        a3 dw 1;
+    27 00000008 0200                        b3 dw 2;
+    28 0000000A 0300                        c3 dw 3;
+    29 0000000C 0400                        d3 dw 4;
+    30                                  ;[(a*b)-d]/(b+c)
+    31 0000000E 03                          a4 db 3;
+    32 0000000F 02                          b4 db 2;
+    33 00000010 02                          c4 db 2;
+    34 00000011 0200                        d4 dw 2;
+    35                                  ;(g+5)-a*d
+    36 00000013 0500                        g5 dw 5;
+    37 00000015 01                          a5 db 1;
+    38 00000016 04                          d5 db 4;
+    39                                  ;a*d*e/(f-5)
+    40 00000017 02                          a6 db 2;
+    41 00000018 02                          d6 db 2;
+    42 00000019 0400                        e6 dw 4;
+    43 0000001B 0700                        f6 dw 7;
+    44                                  ; our code starts here
+    45                                  segment code use32 class=code
+    46                                      start:
+    47                                          ; 2+8
+    48 00000000 A0[00000000]                    mov al, [a1];
+    49 00000005 0205[01000000]                  add al, [b1]; al = 2 + 8
+    50                                          ;a+b-c+d-(a-d) = 1+2-3+4-(1-4) = 7
+    51 0000000B A0[02000000]                    mov al, [a2];
+    52 00000010 0205[03000000]                  add al, [b2]; a+b
+    53 00000016 2A05[04000000]                  sub al, [c2]; a+b-c
+    54 0000001C 0205[05000000]                  add al, [d2]; a+b-c+d
+    55 00000022 8A1D[02000000]                  mov bl, [a2];
+    56 00000028 2A1D[05000000]                  sub bl, [d2]; a-d;
+    57 0000002E 28D8                            sub al, bl; (a+b-c+d) - (a-d)
+    58                                          ;(a+a-c)-(b+b+d) = (1+1-3)-(2+2+4)= -9
+    59 00000030 66A1[06000000]                  mov ax, [a3];
+    60 00000036 660305[06000000]                add ax, [a3]; a+a
+    61 0000003D 662B05[0A000000]                sub ax, [c3]; a+a-c
+    62 00000044 668B1D[08000000]                mov bx, [b3];
+    63 0000004B 66031D[08000000]                add bx, [b3]; b+b
+    64 00000052 66031D[0C000000]                add bx, [d3]; b+b+d;
+    65 00000059 6629D8                          sub ax, bx; (a+a-c) - (b+b+d)
+    66                                          ;[(a*b)-d]/(b+c) = [(3*2)-2]/(2+2) = 4/4 = 1
+    67 0000005C A0[0E000000]                    mov al, [a4];
+    68 00000061 F625[0F000000]                  mul byte [b4]; ax = a*b
+    69 00000067 662B05[11000000]                sub ax, [d4]; ax - d
+    70 0000006E 8A1D[0F000000]                  mov bl, [b4];
+    71 00000074 021D[10000000]                  add bl, [c4]; b+c
+    72 0000007A F6F3                            div byte bl; [(a*b)-d]/(b+c)
+    73                                          ;(g+5)-a*d = 5 + 5 - 1*4 = 10 - 4 = 6
+    74 0000007C 668B1D[13000000]                mov bx, [g5];
+    75 00000083 6683C305                        add bx, 5; g+5
+    76 00000087 A0[15000000]                    mov al, [a5];
+    77 0000008C F625[16000000]                  mul byte [d5]; a*d
+    78 00000092 6629C3                          sub bx, ax; g+5-a*d
+    79                                          ;the last one didnt have doublewords so let's do another one
+    80                                          ;a*d*e/(f-5) = 2*2*4/(7-5) = 16/2=8
+    81 00000095 A0[17000000]                    mov al, [a6];
+    82 0000009A F625[18000000]                  mul byte [d6]; a*d
+    83 000000A0 66F725[19000000]                mul word [e6]; a*d*e = DX:AX
+    84 000000A7 668B1D[1B000000]                mov bx, [f6];
+    85 000000AE 6683EB05                        sub bx, 5; f-5
+    86 000000B2 66F7F3                          div word bx; ax = a*d*e/(f-5) = 8
+    87                                          
+    88                                          
+    89                                          ; exit(0)
+    90 000000B5 6A00                            push    dword 0      ; push the parameter for exit onto the stack
+    91 000000B7 FF15[00000000]                  call    [exit]       ; call exit to terminate the program
+    92                                     

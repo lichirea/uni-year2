@@ -1,0 +1,74 @@
+     1                                  bits 32 ; assembling for the 32 bits architecture
+     2                                  
+     3                                  ; declare the EntryPoint (a label defining the very first instruction of the program)
+     4                                  global start        
+     5                                  
+     6                                  ; declare external functions needed by our program
+     7                                  extern exit, printf, scanf, fopen, fclose, fprintf, fread
+     8                                  import exit msvcrt.dll  
+     9                                  import printf msvcrt.dll
+    10                                  import scanf msvcrt.dll
+    11                                  import fopen msvcrt.dll
+    12                                  import fprintf msvcrt.dll
+    13                                  import fread msvcrt.dll
+    14                                  import fclose msvcrt.dll
+    15                                  
+    16                                  ; our data is declared here (the variables needed by our program)
+    17                                  segment data use32 class=data
+    18                                      ; ...
+    19                                  ;A file name and a text (defined in data segment) are given. The text contains lowercase letters, uppercase letters, digits and special characters. Replace all spaces from the text with character 'S'. Create a file 
+    20                                  
+    21                                      
+    22 00000000 62756E612073696172-         text db "buna siara am venit sa va ANTREB daca vindeti porumb BONDUELLE la 15! reducere", 0
+    22 00000009 6120616D2076656E69-
+    22 00000012 742073612076612041-
+    22 0000001B 4E5452454220646163-
+    22 00000024 612076696E64657469-
+    22 0000002D 20706F72756D622042-
+    22 00000036 4F4E4455454C4C4520-
+    22 0000003F 6C6120313521207265-
+    22 00000048 64756365726500     
+    23 0000004F 4F                          lentext db $-text;
+    24 00000050 636F6465322E6F7574-         file_name db 'code2.out', 0
+    24 00000059 00                 
+    25 0000005A FFFFFFFF                    fd dd -1;
+    26 0000005E 6100                        access_mode db 'a', 0
+    27 00000060 257300                      format db '%s', 0
+    28                                      
+    29                                  ; our code starts here
+    30                                  segment code use32 class=code
+    31                                      start:
+    32                                          ; ...
+    33 00000000 B900000000                      mov ecx, 0;
+    34 00000005 8A0D[4F000000]                  mov cl, [lentext];
+    35 0000000B BE[00000000]                    mov esi, text;
+    36 00000010 FC                              cld;
+    37                                          schimba:
+    38 00000011 AC                                  lodsb;
+    39 00000012 3C20                                cmp al, ' '
+    40 00000014 7504                                jne nueboss
+    41 00000016 C646FF53                                mov byte [esi-1], 'S'
+    42                                              nueboss:
+    43                                          
+    44 0000001A E2F5                            loop schimba
+    45                                          
+    46 0000001C 68[5E000000]                    push dword access_mode
+    47 00000021 68[50000000]                    push file_name
+    48 00000026 FF15[00000000]                  call [fopen]
+    49 0000002C 83C408                          add esp, 4 * 2
+    50                                          
+    51 0000002F A3[5A000000]                    mov [fd] ,eax;
+    52                                          
+    53 00000034 68[00000000]                    push dword text
+    54 00000039 FF35[5A000000]                  push dword [fd]
+    55 0000003F FF15[00000000]                  call [fprintf]
+    56 00000045 83C408                          add esp, 4 * 2
+    57                                          
+    58                                          
+    59 00000048 FF35[5A000000]                  push dword [fd]
+    60 0000004E FF15[00000000]                  call [fclose]
+    61 00000054 83C408                          add esp, 4 * 2
+    62                                          
+    63                                          ; exit(0)
+    64 00000057 6A00                            push    dword 0      ; push the parameter for exit onto the stack
+    65 00000059 FF15[00000000]                  call    [exit]       ; call exit to terminate the program

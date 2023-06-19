@@ -1,0 +1,25 @@
+     1                                  %ifndef _FACTORIAL_ASM_ ; continue if _FACTORIAL_ASM_ is undefined
+     2                                  %define _FACTORIAL_ASM_ ; make sure that it is defined
+     3                                                          ; otherwise, %include allows only one inclusion
+     4                                  
+     5                                  ;define the function
+     6                                  concat: ; 
+     7 00000000 66678B7D04                  mov edi, [ebp + 4]
+     8                                      
+     9 00000005 FC                          cld
+    10                                      
+    11 00000006 66678B7508                  mov esi, [ebp + 8]
+    12 0000000B 66B964000000                mov ecx, 100
+    13 00000011 F3A4                        rep movsb
+    14                                      
+    15 00000013 66678B750C                  mov esi, [ebp + 12]
+    16 00000018 66B964000000                mov ecx, 100
+    17 0000001E F3A4                        rep movsb
+    18                                      
+    19 00000020 66678B7510                  mov esi, [ebp + 16]
+    20 00000025 66B964000000                mov ecx, 100
+    21 0000002B F3A4                        rep movsb
+    22                                  
+    23 0000002D C21000                      ret 4*4;
+    24                                  
+    25                                  %endif

@@ -1,0 +1,72 @@
+     1                                  bits 32 ; assembling for the 32 bits architecture
+     2                                  
+     3                                  ; declare the EntryPoint (a label defining the very first instruction of the program)
+     4                                  global start        
+     5                                  
+     6                                  ; declare external functions needed by our program
+     7                                  extern exit               ; tell nasm that exit exists even if we won't be defining it
+     8                                  import exit msvcrt.dll    ; exit is a function that ends the calling process. It is defined in msvcrt.dll
+     9                                                            ; msvcrt.dll contains exit, printf and all the other important C-runtime specific functions
+    10                                  
+    11                                  ; our data is declared here (the variables needed by our program)
+    12                                  segment data use32 class=data
+    13                                      ;A word string s is given. Build the byte string d such that each element d[i] contains:
+    14                                      ;- the count of zeros in the word s[i], if s[i] is a negative number
+    15                                      ;- the count of ones in the word s[i], if s[i] is a positive number
+    16                                      
+    17 00000000 EAFF9100D0FF7F00        s dw -22, 145, -48, 127
+    18                                  ; 1111111111101010, 10010001, 1111111111010000, 1111111
+    19 00000008 04                      ls db ($-s)/2;
+    20 00000009 <res 0000000A>          d resb 10; d: 3, 3, 5, 7
+    21                                  
+    22                                  
+    23 00000013 00000000                x dd 0;
+    24                                  
+    25                                  ; our code starts here
+    26                                  segment code use32 class=code
+    27                                      start:
+    28 00000000 BE[00000000]                    mov esi, s;
+    29 00000005 BF[09000000]                    mov edi, d;
+    30 0000000A FC                              cld;
+    31 0000000B B900000000                      mov ecx, 0;
+    32 00000010 8A0D[08000000]                  mov cl, [ls];
+    33                                          structure:
+    34 00000016 890D[13000000]                      mov dword [x], ecx;
+    35 0000001C 66AD                                lodsw; load into ax the next word from s
+    36 0000001E 6685C0                              test ax, ax; test the word
+    37 00000021 7812                                js negative; if the word is negative we jump to a label
+    38                                              
+    39                                              positive:
+    40 00000023 B910000000                              mov ecx, 16; go through all the bits of the word
+    41 00000028 B300                                    mov bl, 0; here we keep the count of ones
+    42                                                  count1:
+    43 0000002A 66D1F8                                      sar ax, 1;get the next bit into CF
+    44 0000002D 7302                                        jnc itsazero;if the CF is a 0, then we dont count it
+    45                                                      
+    46 0000002F FEC3                                        inc bl;increment our counter for number of 1s
+    47                                                      
+    48                                                      itsazero:
+    49 00000031 E2F7                                    loop count1;
+    50 00000033 EB10                                    jmp done;
+    51                                                  
+    52                                              negative:
+    53 00000035 B910000000                              mov ecx, 16; go through all the bits of the word
+    54 0000003A B300                                    mov bl, 0; here we keep the count of zeroes
+    55                                                  count0: 
+    56 0000003C 66D1F8                                      sar ax, 1; get the next bit into CF
+    57 0000003F 7202                                        jc itsaone; if the CF is a 1, then we dont count it
+    58                                                      
+    59 00000041 FEC3                                        inc bl;increment the counter for number of 0s
+    60                                                      
+    61                                                      itsaone:
+    62 00000043 E2F7                                    loop count0;
+    63                                              done:
+    64 00000045 88D8                                mov al, bl;
+    65 00000047 AA                                  stosb;
+    66                                              
+    67 00000048 8B0D[13000000]                      mov ecx, dword [x];
+    68 0000004E E2C6                            loop structure;
+    69                                      
+    70                                          ; exit(0)
+    71 00000050 6A00                            push    dword 0      ; push the parameter for exit onto the stack
+    72 00000052 FF15[00000000]                  call    [exit]       ; call exit to terminate the program

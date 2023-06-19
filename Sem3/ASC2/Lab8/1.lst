@@ -1,0 +1,50 @@
+     1                                  bits 32 ; assembling for the 32 bits architecture
+     2                                  
+     3                                  ; declare the EntryPoint (a label defining the very first instruction of the program)
+     4                                  global start        
+     5                                  
+     6                                  ; declare external functions needed by our program
+     7                                  extern exit               ; tell nasm that exit exists even if we won't be defining it
+     8                                  extern printf
+     9                                  import exit msvcrt.dll    ; exit is a function that ends the calling process. It is defined in msvcrt.dll
+    10                                  import scanf msvcrt.dll 
+    11                                  import printf msvcrt.dll ; IMPORT PRINTF 
+    12                                                            ; msvcrt.dll contains exit, printf and all the other important C-runtime specific functions
+    13                                                            
+    14                                  
+    15                                  
+    16                                  ; our data is declared here (the variables needed by our program)
+    17                                  segment data use32 class=data
+    18                                      ; ...
+    19                                      ;Two natural numbers a and b (a: dword, b: dword, defined in the data segment) are given. Calculate 
+    20                                      ;a/b and display the quotient in the following format: "<a>/<b> = <quotient>". Example: for a = 200, 
+    21                                      ;b = 5 it will display: "200/5 = 40".
+    22                                      ;The values will be displayed in decimal format (base 10) with sign.
+    23                                      
+    24 00000000 C8000000                    a dd 200;
+    25 00000004 05000000                    b dd 5;
+    26 00000008 25642F2564203D2025-         format db "%d/%d = %d", 0; 
+    26 00000011 6400               
+    27                                  
+    28                                  ; our code starts here
+    29                                  segment code use32 class=code
+    30                                      start:
+    31                                          ; ...
+    32 00000000 A1[00000000]                    mov eax, dword [a]; move a into eax
+    33 00000005 99                              cdq; convert eax into edx:eax
+    34 00000006 F73D[04000000]                  idiv dword [b]; eax = edx:eax / [b]
+    35                                          
+    36                                          
+    37                                          ;int printf(const char * format, variable_1, constant_2, ...);
+    38                                          ; pushing the parameter on the stack
+    39 0000000C 50                              push eax;
+    40 0000000D FF35[04000000]                  push dword [b];
+    41 00000013 FF35[00000000]                  push dword [a];
+    42 00000019 68[08000000]                    push dword format;  
+    43 0000001E FF15[00000000]          		call [printf]       ; calling the printf function
+    44 00000024 83C410                  		add esp, 4 * 4     ; cleaning the parameters from the stack
+    45                                  
+    46                                          
+    47                                          ; exit(0)
+    48 00000027 6A00                            push    dword 0      ; push the parameter for exit onto the stack
+    49 00000029 FF15[00000000]                  call    [exit]       ; call exit to terminate the program

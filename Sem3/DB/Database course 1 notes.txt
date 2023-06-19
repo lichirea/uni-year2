@@ -1,0 +1,4 @@
+dbs2122csen password for database moodle
+
+
+google sql server, download any of developer or express; install smss in the installer

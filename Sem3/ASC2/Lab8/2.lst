@@ -1,0 +1,127 @@
+     1                                  bits 32 ; assembling for the 32 bits architecture
+     2                                  
+     3                                  ; declare the EntryPoint (a label defining the very first instruction of the program)
+     4                                  global start        
+     5                                  
+     6                                  ; declare external functions needed by our program
+     7                                  extern exit               ; tell nasm that exit exists even if we won't be defining it
+     8                                  extern fopen
+     9                                  extern fread
+    10                                  extern fclose
+    11                                  extern printf
+    12                                  import exit msvcrt.dll    ; exit is a function that ends the calling process. It is defined in msvcrt.dll
+    13                                  import fopen msvcrt.dll
+    14                                  import fread msvcrt.dll
+    15                                  import printf msvcrt.dll
+    16                                  import fclose msvcrt.dll
+    17                                                            ; msvcrt.dll contains exit, printf and all the other important C-runtime specific functions
+    18                                  
+    19                                  ; our data is declared here (the variables needed by our program)
+    20                                  segment data use32 class=data
+    21                                      ; ...
+    22                                      ;A text file is given. Read the content of the file, determine the digit with the highest frequency and display the digit along with its frequency on the screen. The name of text file is defined in the data segm
+    23 00000000 696E7075742E747874-         file_name db "input.txt", 0;
+    23 00000009 00                 
+    24 0000000A 7200                        access_mode db "r", 0;
+    25 0000000C 00000000                    fd dd 0;
+    26                                      
+    27                                      max_len equ 100;
+    28 00000010 00<rept>                    text times max_len db 0;
+    29 00000074 00                          len db 0;
+    30                                      
+    31 00000075 000000000000000000-         freq db 0, 0, 0, 0, 0, 0, 0, 0, 0, 0;
+    31 0000007E 00                 
+    32                                      
+    33 0000007F 00                          max_digit db 0;
+    34 00000080 00                          max_freq db 0;
+    35                                      
+    36 00000081 446967697420256420-         format db "Digit %d has the highest frequency, equal to %d", 0;
+    36 0000008A 686173207468652068-
+    36 00000093 696768657374206672-
+    36 0000009C 657175656E63792C20-
+    36 000000A5 657175616C20746F20-
+    36 000000AE 256400             
+    37                                      
+    38                                  ; our code starts here
+    39                                  segment code use32 class=code
+    40                                      start:
+    41                                          ; ...
+    42                                          ;FILE * fopen(const char* file_name, const char * access_mode) ; open the file
+    43 00000000 68[0A000000]                    push dword access_mode;
+    44 00000005 68[00000000]                    push dword file_name;
+    45 0000000A FF15[00000000]                  call [fopen];
+    46 00000010 83C408                          add esp, 4 * 2;
+    47                                          
+    48                                          ;now in EAX we have the filedescriptor
+    49 00000013 83F800                          cmp eax, 0;
+    50 00000016 0F849B000000                    je final;
+    51 0000001C A3[0C000000]                    mov [fd], eax;
+    52                                          
+    53                                          ;we read all of the file 
+    54 00000021 FF35[0C000000]                  push dword [fd];
+    55 00000027 6A64                            push dword max_len;
+    56 00000029 6A01                            push dword 1;
+    57 0000002B 68[10000000]                    push dword text;        
+    58 00000030 FF15[00000000]                  call [fread];
+    59 00000036 83C410                          add esp, 4*4
+    60                                          ;now in eax we have the number of chars that we read
+    61 00000039 A2[74000000]                    mov [len], al;
+    62                                          
+    63                                          ;int fclose(FILE * descriptor); close the file
+    64 0000003E FF35[0C000000]                  push dword [fd];
+    65 00000044 FF15[00000000]                  call [fclose];
+    66 0000004A 83C404                          add esp, 4 * 1;
+    67                                          
+    68                                          ; we parse all the chars of the text
+    69 0000004D B900000000                      mov ecx, 0
+    70 00000052 8A0D[74000000]                  mov cl, [len];
+    71 00000058 BE[10000000]                    mov esi, text;
+    72 0000005D BF[75000000]                    mov edi, freq;
+    73                                          structure:
+    74 00000062 AC                                  lodsb; get next byte of the text
+    75                                              ;check if its a digit
+    76 00000063 3C30                                cmp al, '0';
+    77 00000065 7C2C                                jl not_a_number;
+    78 00000067 3C39                                cmp al, '9';
+    79 00000069 7F28                                jg not_a_number;
+    80                                              
+    81 0000006B 2C30                                sub al, '0'; convert to number from ASCII code
+    82 0000006D 6698                                cbw;
+    83 0000006F 98                                  cwde;
+    84 00000070 89C7                                mov edi, eax; convert the number to a dword and put in in EDI so we can use it as an index
+    85                                              
+    86 00000072 FE80[75000000]                      inc byte [freq + eax];at the position index = digit's value, we keep the freq of the digit
+    87                                              
+    88                                              
+    89 00000078 8A1D[80000000]                      mov bl, [max_freq];
+    90 0000007E 8A97[75000000]                      mov dl, [freq + edi];
+    91                                              
+    92 00000084 38D3                                cmp bl, dl; check if the freq of the current digit is the max
+    93 00000086 7D0B                                jge no_change;if it is, then change the corresponding variables
+    94 00000088 8815[80000000]                          mov byte [max_freq], dl;
+    95 0000008E A2[7F000000]                            mov byte [max_digit], al;
+    96                                              no_change:
+    97                                              not_a_number:
+    98 00000093 E2CD                            loop structure;
+    99                                         
+   100                                          
+   101 00000095 A0[7F000000]                    mov al, [max_digit]; convert the bytes into dword to give as parameters
+   102 0000009A 6698                            cbw;
+   103 0000009C 98                              cwde;
+   104 0000009D 89C2                            mov edx, eax;
+   105 0000009F A0[80000000]                    mov al, [max_freq];
+   106 000000A4 6698                            cbw;
+   107 000000A6 98                              cwde;
+   108                                          
+   109                                          ;int printf(const char * format, variable_1, constant_2, ...);
+   110                                          ; pushing the parameter on the stack
+   111 000000A7 50                              push dword eax;
+   112 000000A8 52                              push dword edx;
+   113 000000A9 68[81000000]                    push dword format;  
+   114 000000AE FF15[00000000]          		call [printf]       ; calling the printf function
+   115 000000B4 83C40C                  		add esp, 4 * 3     ; cleaning the parameters from the stack
+   116                                          
+   117                                          final:
+   118                                          ; exit(0)
+   119 000000B7 6A00                            push    dword 0      ; push the parameter for exit onto the stack
+   120 000000B9 FF15[00000000]                  call    [exit]       ; call exit to terminate the program

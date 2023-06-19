@@ -1,0 +1,36 @@
+     1                                  bits 32 ; assembling for the 32 bits architecture
+     2                                  
+     3                                  ; declare the EntryPoint (a label defining the very first instruction of the program)
+     4                                  global start        
+     5                                  
+     6                                  ; declare external functions needed by our program
+     7                                  extern exit, printf, scanf, fopen, fclose, fprintf, fread
+     8                                  import exit msvcrt.dll  
+     9                                  import printf msvcrt.dll
+    10                                  import scanf msvcrt.dll
+    11                                  import fopen msvcrt.dll
+    12                                  import fprintf msvcrt.dll
+    13                                  import fread msvcrt.dll
+    14                                  import fclose msvcrt.dll
+    15                                  
+    16                                  ; our data is declared here (the variables needed by our program)
+    17                                  segment data use32 class=data
+    18                                      ; ...
+    19                                  
+    20 00000000 48656C6C6F21204164-         message db 'Hello! Adsa', 0
+    20 00000009 736100             
+    21 0000000C 48656C6C6F                  format db 'Hello';
+    22 00000011 497473206D65                format2 db 'Its me';
+    23                                  ; our code starts here
+    24                                  segment code use32 class=code
+    25                                      start:
+    26                                          ; ...
+    27 00000000 68[0C000000]                     push dword format
+    28 00000005 FF15[00000000]                   call [printf]
+    29 0000000B 83C408                           add esp, 4 * 2
+    30 0000000E 68[11000000]                     push dword format2
+    31 00000013 FF15[00000000]                   call [printf]
+    32 00000019 83C408                           add esp, 4 * 2
+    33                                          ; exit(0)
+    34 0000001C 6A00                            push    dword 0      ; push the parameter for exit onto the stack
+    35 0000001E FF15[00000000]                  call    [exit]       ; call exit to terminate the program
